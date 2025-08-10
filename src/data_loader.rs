@@ -14,7 +14,7 @@ pub struct Data {
 pub fn load_data() -> Result<Data, Box<dyn std::error::Error>> {
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path("assets/ds.salaries.csv")?;
+        .from_path("./assets/ds_salaries.csv")?;
 
     let records = reader
         .deserialize()
