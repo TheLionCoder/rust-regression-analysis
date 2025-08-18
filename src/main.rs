@@ -1,10 +1,13 @@
 use data_loader::load_data;
-use ndarray::array;
+use ndarray::{array, stack};
 use regression::linear::linear_regression;
+
+use crate::{preprocessing::normalize_feature_inplace, regression::multiple_linear::multiple_linear_regression};
 
 mod data_loader;
 mod regression;
 mod regression_error;
+mod preprocessing;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -13,13 +16,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set a global default subscriber.");
-    let data = load_data()?;
-    let start_year = data.work_years.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-    let centered_years: ndarray::Array1<f64> = data.work_years.mapv(|year| year - start_year);
+    let mut data = load_data()?;
 
-    tracing::info!("Data centered around starting year: {}", start_year);
+    normalize_feature_inplace(&mut data.work_years)?;
+    normalize_feature_inplace(&mut data.remote_ratios)?;
 
-    let (beta0, beta1) = linear_regression(&centered_years, &data.salaries_in_usd).unwrap();
+    let (beta0, beta1) = linear_regression(&data.work_years, &data.salaries_in_usd).unwrap();
 
     tracing::info!("Intercept (ß0): {:.2}", beta0);
     tracing::info!("Slope (ß1): {:.2}", beta1);
@@ -28,6 +30,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_years = array![5.0, 10.0, 15.0];
     let predicted_salaries = beta0 + beta1 * &test_years;
     tracing::info!("Predicted salaries: {:?}", predicted_salaries);
+
+    let features = stack(ndarray::Axis(1),
+        &[data.work_years.view(), data.remote_ratios.view()])?;
+
+    let beta = multiple_linear_regression(&features, &data.salaries_in_usd)?;
+
+    tracing::info!("Coefficients: {:?}", beta);
+
+    // Predict new data
+    let test_data = array![[1.0, 5.0, 0.5], [1.0, 10.0, 0.2], [1.0, 15.0, 0.8]];
+
+    let y_predict = test_data.dot(&beta);
+    tracing::info!("Predictes Salaries: {:?}", y_predict);
 
     Ok(())
 }
