@@ -1,4 +1,4 @@
-use ndarray_linalg::{LeastSquaresSvd};
+use ndarray_linalg::LeastSquaresSvd;
 
 pub fn multiple_linear_regression(
     matrix: &ndarray::Array2<f64>,
@@ -8,7 +8,7 @@ pub fn multiple_linear_regression(
     let ones = ndarray::Array2::ones((matrix.nrows(), 1));
 
     let matrix_with_intercept = ndarray::concatenate![ndarray::Axis(1), ones.view(), matrix.view()];
-    
+
     let results = matrix_with_intercept.least_squares(y)?;
 
     Ok(results.solution)
